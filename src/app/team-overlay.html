@@ -1,0 +1,23 @@
+<section class="overlay team">
+  @if (loading() && !team()) {
+    <p class="status">Loading…</p>
+  } @else if (error()) {
+    <p class="status">{{ error() }}</p>
+  } @else if (team(); as data) {
+    <table class="team-table">
+      <tbody>
+        <tr class="labels">
+          <th>Team Total</th>
+          <th>Rank</th>
+        </tr>
+        <tr class="values">
+          <td>{{ formatAmount(data.total, data.totalDisplay) }}</td>
+          <td>{{ data.rank }}</td>
+        </tr>
+        <tr class="name">
+          <td colspan="2">{{ data.name }}</td>
+        </tr>
+      </tbody>
+    </table>
+  }
+</section>

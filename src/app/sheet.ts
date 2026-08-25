@@ -1,22 +1,18 @@
-export const SPENDING_SHEET = {
-  id: '1rkaUZ8GCvz7866_DWh-yZ1L2hSjdOwbYlBgAv5rCqPY',
-  sheet: 'Spending Tracker',
-  nameColumn: 'I',
-  scoreColumn: 'J',
-  startRow: 4,
-  endRow: 8,
-  title: 'Spending Tracker',
+export const EVENT_SHEET = {
+  id: '1cPl3NuUcOhO2Ifw8xGjm_Vx31CGqE73s8kzWVLoPz7E',
+  /** Full scoreboard block: AD1:AL5 */
+  scoreboardRange: 'AD1:AL5',
+  /** Team summary block for mini overlays: AD9:AL12 */
+  teamSummaryRange: 'AD9:AL12',
+  refreshSeconds: 15,
+  defaultEventName: 'Sym Ark Raiders Event',
+  defaultLogo: 'event-logo.svg',
 } as const;
 
-export function spendingSheetUrl(responseHandler: string): string {
+export function sheetGvizUrl(responseHandler: string, range: string): string {
   const tqx = encodeURIComponent(`out:json;responseHandler:${responseHandler}`);
-  const sheet = encodeURIComponent(SPENDING_SHEET.sheet);
-  const limit = SPENDING_SHEET.endRow - SPENDING_SHEET.startRow + 1;
-  const tq = encodeURIComponent(
-    `select ${SPENDING_SHEET.nameColumn}, ${SPENDING_SHEET.scoreColumn} limit ${limit}`,
-  );
   return (
-    `https://docs.google.com/spreadsheets/d/${SPENDING_SHEET.id}/gviz/tq` +
-    `?tqx=${tqx}&tq=${tq}&sheet=${sheet}`
+    `https://docs.google.com/spreadsheets/d/${EVENT_SHEET.id}/gviz/tq` +
+    `?tqx=${tqx}&range=${encodeURIComponent(range)}`
   );
 }

@@ -1,0 +1,104 @@
+:host {
+  display: block;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #f4f1ea;
+}
+
+.scoreboard {
+  width: min(920px, 100%);
+  padding: 12px;
+}
+
+.top-bar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(12, 16, 22, 0.82);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
+.logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.top-bar h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e8c37a;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.team-card {
+  padding: 14px 16px 12px;
+  border-radius: 16px;
+  background: rgba(12, 16, 22, 0.78);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+}
+
+.team-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.rank {
+  color: #e8c37a;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.team-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.team-total {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  margin: 0;
+  color: rgba(244, 241, 234, 0.62);
+}
+
+@media (max-width: 720px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}

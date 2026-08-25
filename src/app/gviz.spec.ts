@@ -1,42 +1,98 @@
-import { entriesFromGviz, findEntry } from './gviz';
+import { parseScoreboard, parseTeamSummaries, mergeScoreboardAndSummaries } from './gviz';
 
-describe('gviz sheet parser', () => {
-  const rangeQuery = {
-    status: 'ok',
-    table: {
-      cols: [{ id: 'I' }, { id: 'J' }],
-      rows: [
-        { c: [{ v: 'Riley' }, { v: 10, f: '$10.00' }] },
-        { c: [{ v: 'Jordan' }, { v: 313534, f: '$313,534.00' }] },
-        { c: [{ v: 'Morgan' }, { v: 24646, f: '$24,646.00' }] },
-        { c: [{ v: 'Casey' }, { v: 16559, f: '$16,559.00' }] },
-        { c: [{ v: 'Alex' }, { v: 12357, f: '$12,357.00' }] },
+const sampleTable = {
+  cols: [
+    { id: 'AD' },
+    { id: 'AE' },
+    { id: 'AF' },
+    { id: 'AG' },
+    { id: 'AH' },
+    { id: 'AI' },
+    { id: 'AJ' },
+    { id: 'AK' },
+    { id: 'AL' },
+  ],
+  rows: [
+    {
+      c: [
+        { v: '1st' },
+        { v: 'Team 3' },
+        { v: 5024, f: '5024' },
+        { v: 'Guy 7' },
+        { v: 5007, f: '5007' },
+        { v: 'Guy 8' },
+        { v: 8, f: '8' },
+        { v: 'Guy 9' },
+        { v: 9, f: '9' },
       ],
     },
-  };
+    {
+      c: [
+        { v: '2nd' },
+        { v: 'Team 4' },
+        { v: 1641, f: '1641' },
+        { v: 'Guy 10' },
+        { v: 910, f: '910' },
+        { v: 'Guy 11' },
+        { v: 719, f: '719' },
+        { v: 'Guy 12' },
+        { v: 12, f: '12' },
+      ],
+    },
+    {
+      c: [
+        { v: '3rd' },
+        { v: 'Team 2' },
+        { v: 1014, f: '1014' },
+        { v: 'Guy 4' },
+        { v: 1003, f: '1003' },
+        { v: 'Guy 5' },
+        { v: 5, f: '5' },
+        { v: 'Guy 6' },
+        { v: 6, f: '6' },
+      ],
+    },
+    {
+      c: [
+        { v: '4th' },
+        { v: 'Team 1' },
+        { v: 1006, f: '1006' },
+        { v: 'Guy 1' },
+        { v: 1001, f: '1001' },
+        { v: 'Guy 2' },
+        { v: 2, f: '2' },
+        { v: 'Guy 3' },
+        { v: 3, f: '3' },
+      ],
+    },
+  ],
+};
 
-  it('uses whatever names are in I4:J8', () => {
-    const board = entriesFromGviz(rangeQuery);
-    expect(board.entries.map((entry) => entry.name)).toEqual([
-      'Riley',
-      'Jordan',
-      'Morgan',
-      'Casey',
-      'Alex',
-    ]);
-    expect(findEntry(board.entries, 'riley')?.display).toBe('$10.00');
+const summaryTable = {
+  cols: sampleTable.cols,
+  rows: [
+    { c: [{ v: '4th' }, { v: 'Team 1' }, { v: 1006, f: '1006' }, null, null, null, null, null, null] },
+    { c: [{ v: '3rd' }, { v: 'Team 2' }, { v: 1014, f: '1014' }, null, null, null, null, null, null] },
+    { c: [{ v: '1st' }, { v: 'Team 3' }, { v: 5024, f: '5024' }, null, null, null, null, null, null] },
+    { c: [{ v: '2nd' }, { v: 'Team 4' }, { v: 1641, f: '1641' }, null, null, null, null, null, null] },
+  ],
+};
+
+describe('gviz event parser', () => {
+  it('keeps teams in fixed Team 1–4 order', () => {
+    const board = parseScoreboard({ status: 'ok', table: sampleTable });
+    expect(board.teams.map((team) => team.id)).toEqual([1, 2, 3, 4]);
+    expect(board.teams.map((team) => team.rank)).toEqual(['4th', '3rd', '1st', '2nd']);
+    expect(board.teams[0]?.players).toHaveLength(3);
   });
 
-  it('reads two-column select results even without I/J ids', () => {
-    const remapped = {
-      status: 'ok',
-      table: {
-        cols: [{ id: 'A' }, { id: 'B' }],
-        rows: [{ c: [{ v: 'Sam' }, { v: 42, f: '$42.00' }] }],
-      },
-    };
-    expect(entriesFromGviz(remapped).entries).toEqual([
-      { name: 'Sam', score: 42, display: '$42.00' },
-    ]);
+  it('merges team summary ranks and totals from AD9:AL12', () => {
+    const scoreboard = parseScoreboard({ status: 'ok', table: sampleTable });
+    const summaries = parseTeamSummaries({ status: 'ok', table: summaryTable });
+    const merged = mergeScoreboardAndSummaries(scoreboard, summaries);
+    expect(merged.teams.map((team) => team.id)).toEqual([1, 2, 3, 4]);
+    const team1 = merged.teams.find((team) => team.id === 1);
+    expect(team1?.rank).toBe('4th');
+    expect(team1?.players[0]?.name).toBe('Guy 1');
   });
 });

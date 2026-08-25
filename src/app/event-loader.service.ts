@@ -1,42 +1,35 @@
 import { DOCUMENT } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, NgZone } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { Board, OverlayOptions, parseRows } from './board';
-import { entriesFromGviz, GvizResponse } from './gviz';
-import { spendingSheetUrl } from './sheet';
+import { EventScoreboard } from './event-data';
+import {
+  GvizResponse,
+  mergeScoreboardAndSummaries,
+  parseScoreboard,
+  parseTeamSummaries,
+} from './gviz';
+import { EVENT_SHEET, sheetGvizUrl } from './sheet';
 
 @Injectable({ providedIn: 'root' })
-export class BoardLoader {
-  private readonly http = inject(HttpClient);
+export class EventLoaderService {
   private readonly document = inject(DOCUMENT);
   private readonly zone = inject(NgZone);
 
-  async load(options: OverlayOptions): Promise<Board> {
-    if (options.rows) {
-      return {
-        title: options.title?.trim() || 'Leaderboard',
-        unit: options.unit ?? undefined,
-        entries: parseRows(options.rows),
-      };
-    }
-
-    if (options.src) {
-      return this.getBoard(options.src);
-    }
-
-    return this.loadSpendingSheet();
+  loadEvent(): Promise<EventScoreboard> {
+    return Promise.all([
+      this.fetchRange(EVENT_SHEET.scoreboardRange),
+      this.fetchRange(EVENT_SHEET.teamSummaryRange),
+    ]).then(([scoreboardPayload, summaryPayload]) => {
+      const scoreboard = parseScoreboard(scoreboardPayload);
+      const summaries = parseTeamSummaries(summaryPayload);
+      return mergeScoreboardAndSummaries(scoreboard, summaries);
+    });
   }
 
-  private getBoard(url: string): Promise<Board> {
-    return firstValueFrom(this.http.get<Board>(url));
-  }
-
-  private loadSpendingSheet(): Promise<Board> {
+  private fetchRange(range: string): Promise<GvizResponse> {
     const callback = `lecheGviz_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const url = spendingSheetUrl(callback);
+    const url = sheetGvizUrl(callback, range);
 
-    return new Promise<Board>((resolve, reject) => {
+    return new Promise<GvizResponse>((resolve, reject) => {
       const win = this.document.defaultView as (Window & Record<string, unknown>) | null;
       if (!win) {
         reject(new Error('No window for Google Sheet JSONP.'));
@@ -67,11 +60,7 @@ export class BoardLoader {
           }
           settled = true;
           cleanup();
-          try {
-            resolve(entriesFromGviz(payload));
-          } catch (error) {
-            reject(error);
-          }
+          resolve(payload);
         });
       };
 
