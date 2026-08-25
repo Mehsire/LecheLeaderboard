@@ -5,7 +5,7 @@ export const EVENT_SHEET = {
   /** Team summary block for mini overlays: AD9:AL12 */
   teamSummaryRange: 'AD9:AL12',
   refreshSeconds: 15,
-  defaultEventName: 'Sym Ark Raiders Event',
+  defaultEventName: 'Sym Arc Raiders Event',
   defaultLogo: 'event-logo.svg',
 } as const;
 

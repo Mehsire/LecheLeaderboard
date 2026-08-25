@@ -11,7 +11,12 @@
           <th>Rank</th>
         </tr>
         <tr class="values">
-          <td>{{ formatAmount(data.total, data.totalDisplay) }}</td>
+          <td>
+            <span class="money">
+              <img class="currency-icon" [src]="currencyIcon" alt="" />
+              {{ formatAmount(data.total, data.totalDisplay) }}
+            </span>
+          </td>
           <td>{{ data.rank }}</td>
         </tr>
         <tr class="name">

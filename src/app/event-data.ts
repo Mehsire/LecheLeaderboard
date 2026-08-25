@@ -38,7 +38,13 @@ export function teamById(board: EventScoreboard, teamId: number): TeamScore | un
   return board.teams.find((team) => team.id === teamId);
 }
 
-export function formatAmount(value: number, display?: string): string {
-  const raw = (display ?? value.toLocaleString()).trim();
-  return raw.startsWith('$') ? raw : `$${raw}`;
+export function formatAmount(value: number, _display?: string): string {
+  const whole = Math.round(Number(value));
+  if (!Number.isFinite(whole)) {
+    return '0';
+  }
+  // Whole numbers only; period as thousands separator (e.g. 5024 → 5.024).
+  return whole.toLocaleString('de-DE', { maximumFractionDigits: 0 });
 }
+
+export const CURRENCY_ICON = 'currency-icon.svg';

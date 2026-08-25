@@ -1,6 +1,6 @@
 :host {
   display: block;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: Urbanist, system-ui, sans-serif;
 }
 
 .overlay {
@@ -43,6 +43,20 @@
   font-size: 1.45rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.money {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+}
+
+.currency-icon {
+  width: 0.95em;
+  height: 0.95em;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .name td {

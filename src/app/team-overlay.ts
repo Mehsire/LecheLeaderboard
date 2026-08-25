@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { EventDataService } from './event-data.service';
-import { formatAmount, teamById } from './event-data';
+import { formatAmount, CURRENCY_ICON, teamById } from './event-data';
 import { ViewOptionsService } from './view-options';
 
 @Component({
@@ -16,6 +16,7 @@ export class TeamOverlay {
   private readonly route = inject(ActivatedRoute);
   private readonly eventData = inject(EventDataService);
   protected readonly view = inject(ViewOptionsService);
+  protected readonly currencyIcon = CURRENCY_ICON;
 
   private readonly teamId = toSignal(
     this.route.paramMap.pipe(map((params) => Number(params.get('teamId')))),

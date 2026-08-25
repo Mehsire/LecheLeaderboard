@@ -1,6 +1,6 @@
 :host {
   display: block;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: Urbanist, system-ui, sans-serif;
   color: #f4f1ea;
 }
 
@@ -72,6 +72,20 @@
 .team-total {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.money {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+.currency-icon {
+  width: 1.2em;
+  height: 1.2em;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 ul {

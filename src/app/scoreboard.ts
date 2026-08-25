@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { EventDataService } from './event-data.service';
-import { formatAmount } from './event-data';
+import { formatAmount, CURRENCY_ICON } from './event-data';
 import { ViewOptionsService } from './view-options';
 
 @Component({
@@ -12,6 +12,7 @@ import { ViewOptionsService } from './view-options';
 export class Scoreboard {
   private readonly eventData = inject(EventDataService);
   protected readonly view = inject(ViewOptionsService);
+  protected readonly currencyIcon = CURRENCY_ICON;
 
   protected readonly teams = computed(() => this.eventData.data()?.teams ?? []);
   protected readonly error = computed(() => this.eventData.error());

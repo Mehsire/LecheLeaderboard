@@ -15,13 +15,19 @@
           <div class="team-head">
             <span class="rank">{{ team.rank }}</span>
             <h2>{{ team.name }}</h2>
-            <span class="team-total">{{ formatAmount(team.total, team.totalDisplay) }}</span>
+            <span class="money">
+              <img class="currency-icon" [src]="currencyIcon" alt="" />
+              {{ formatAmount(team.total, team.totalDisplay) }}
+            </span>
           </div>
           <ul>
             @for (player of team.players; track player.name) {
               <li>
                 <span>{{ player.name }}</span>
-                <span>{{ formatAmount(player.total, player.display) }}</span>
+                <span class="money">
+                  <img class="currency-icon" [src]="currencyIcon" alt="" />
+                  {{ formatAmount(player.total, player.display) }}
+                </span>
               </li>
             }
           </ul>
