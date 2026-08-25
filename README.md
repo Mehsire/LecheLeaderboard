@@ -42,9 +42,9 @@ Sheet config: `src/app/sheet.ts`
 
 1. **Settings → Pages → Source: GitHub Actions**
 2. Push to `main`
-3. Use the **repo name** in the URL (project pages, not the domain root):
+3. Use the **exact repo name casing** in the URL (GitHub Pages paths are case-sensitive):
 
-- Scoreboard: `https://<user>.github.io/lecheleaderboard/scoreboard`
-- Team 1: `https://<user>.github.io/lecheleaderboard/team/1`
+- Scoreboard: `https://mehsire.github.io/LecheLeaderboard/scoreboard`
+- Team 1: `https://mehsire.github.io/LecheLeaderboard/team/1`
 
-If you rename the repo, update `baseHref` in `angular.json` (`pages` configuration) to match `/your-repo-name/`.
+If you rename the repo, update `baseHref` in `angular.json` (`pages` configuration) to match `/YourRepoName/`.
