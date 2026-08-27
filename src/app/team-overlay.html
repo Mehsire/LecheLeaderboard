@@ -1,28 +1,41 @@
-<section class="overlay team">
-  @if (loading() && !team()) {
-    <p class="status">Loading…</p>
-  } @else if (error()) {
-    <p class="status">{{ error() }}</p>
-  } @else if (team(); as data) {
-    <table class="team-table">
-      <tbody>
-        <tr class="labels">
-          <th>Team Total</th>
-          <th>Rank</th>
-        </tr>
-        <tr class="values">
-          <td>
-            <span class="money">
-              <img class="currency-icon" [src]="currencyIcon" alt="" />
-              {{ formatAmount(data.total, data.totalDisplay) }}
-            </span>
-          </td>
-          <td>{{ data.rank }}</td>
-        </tr>
-        <tr class="name">
-          <td colspan="2">{{ data.name }}</td>
-        </tr>
-      </tbody>
-    </table>
+<div class="stage" [class.rotating]="rotationEnabled()">
+  <section class="overlay team panel" [class.active]="segment() === 'team'">
+    @if (loading() && !team()) {
+      <p class="status">Loading…</p>
+    } @else if (error()) {
+      <p class="status">{{ error() }}</p>
+    } @else if (team(); as data) {
+      <table class="team-table">
+        <tbody>
+          <tr class="labels">
+            <th>Team Total</th>
+            <th>Rank</th>
+          </tr>
+          <tr class="values">
+            <td>
+              <span class="money">
+                <img class="currency-icon" [src]="currencyIcon" alt="" />
+                {{ formatAmount(data.total, data.totalDisplay) }}
+              </span>
+            </td>
+            <td>{{ data.rank }}</td>
+          </tr>
+          <tr class="name">
+            <td colspan="2">{{ data.name }}</td>
+          </tr>
+        </tbody>
+      </table>
+    }
+  </section>
+
+  @if (rotationEnabled()) {
+    <section class="overlay sponsors panel" [class.active]="segment() === 'sponsors'">
+      <p class="sponsors-label">Sponsors</p>
+      <div class="sponsor-grid" [style.--count]="sponsorImages().length">
+        @for (src of sponsorImages(); track src) {
+          <img [src]="src" alt="" />
+        }
+      </div>
+    </section>
   }
-</section>
+</div>

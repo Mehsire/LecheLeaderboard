@@ -24,6 +24,10 @@ export interface ViewOptions {
   preview: boolean;
   eventName: string;
   logoUrl: string | null;
+  /** Seconds to show the team overlay before rotating to sponsors. */
+  teamSec: number | null;
+  /** Seconds to show the sponsor segment before rotating back. */
+  sponsorSec: number | null;
 }
 
 export function parseViewOptions(params: URLSearchParams): ViewOptions {
@@ -31,7 +35,17 @@ export function parseViewOptions(params: URLSearchParams): ViewOptions {
     preview: params.get('preview') === '1' || params.get('preview') === 'true',
     eventName: params.get('event')?.trim() || EVENT_SHEET.defaultEventName,
     logoUrl: params.get('logo')?.trim() || null,
+    teamSec: positiveSeconds(params.get('teamSec') ?? params.get('team')),
+    sponsorSec: positiveSeconds(params.get('sponsorSec') ?? params.get('sponsorsSec')),
   };
+}
+
+function positiveSeconds(raw: string | null): number | null {
+  if (raw === null || raw.trim() === '') {
+    return null;
+  }
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export function teamById(board: EventScoreboard, teamId: number): TeamScore | undefined {

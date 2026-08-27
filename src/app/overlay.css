@@ -3,6 +3,33 @@
   font-family: Urbanist, system-ui, sans-serif;
 }
 
+.stage {
+  position: relative;
+  width: min(280px, 100%);
+}
+
+.stage.rotating {
+  min-height: 160px;
+}
+
+.panel {
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.stage.rotating .panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+.stage.rotating .panel.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .overlay {
   --panel: rgba(12, 16, 22, 0.78);
   --text: #f4f1ea;
@@ -63,6 +90,38 @@
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.sponsors {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+  text-align: center;
+  min-height: 100%;
+}
+
+.sponsors-label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sponsor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 10px;
+  align-items: center;
+  justify-items: center;
+}
+
+.sponsor-grid img {
+  width: 100%;
+  max-width: 110px;
+  max-height: 56px;
+  object-fit: contain;
 }
 
 .status {
