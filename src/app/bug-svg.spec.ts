@@ -16,6 +16,8 @@ const bugSnippet = `<?xml version="1.0" encoding="UTF-8"?>
     <rect id="Alienware-Logo_1" transform="translate(85 2)" width="162" height="13"/>
   </g>
   <g id="info" opacity="0">
+    <text id="rank"><tspan x="17.8329" y="11.25">RANK</tspan></text>
+    <text id="rankNumber"><tspan x="25.3438" y="32.36">1</tspan></text>
     <text id="teamName" transform="translate(66)"><tspan x="73.4258" y="13.1">TEAM NAME 1</tspan></text>
     <text id="teamTotal" transform="translate(66 49)"><tspan x="86.0176" y="9.825">TEAM TOTAL</tspan></text>
     <g id="scorebox_2" transform="translate(66 11)">
@@ -23,7 +25,6 @@ const bugSnippet = `<?xml version="1.0" encoding="UTF-8"?>
       <text id="score" transform="translate(51.6398)"><tspan x="0.171875" y="32.36">101,558</tspan></text>
     </g>
   </g>
-  <text id="rankNumber"><tspan>1</tspan></text>
 </svg>`;
 
 const rotationSnippet = `${bugSnippet.replace('</svg>', '')}
@@ -99,8 +100,37 @@ describe('bug-svg', () => {
     expect(patched).toContain('text-anchor="middle"');
     expect(patched).toContain('x="113"');
     expect(patched).toContain('font-size="14"');
-    expect(patched).toContain('translate(66 14)');
+    expect(patched).toContain('translate(66 12)');
     expect(patched).toContain('translate(66 52)');
+  });
+
+  it('centers rank label and number in the rank column', () => {
+    const patched = patchBugSvg(bugSnippet, values);
+    expect(patched).toMatch(/id="rank"[^>]*text-anchor="middle"/);
+    expect(patched).toMatch(/id="rankNumber"[^>]*text-anchor="middle"/);
+    expect(patched).toContain('<text id="rank"');
+    expect(patched).toContain('x="33" y="11.25">RANK</tspan>');
+    expect(patched).toContain('x="33" y="32.36">2</tspan>');
+  });
+
+  it('positions the coin to the left of a wide score without overlap', () => {
+    const patched = patchBugSvg(bugSnippet, { ...values, score: '101,558' });
+    const scoreMatch = patched.match(/id="score"[^>]*><tspan x="(\d+(?:\.\d+)?)"/);
+    const coinMatch = patched.match(/id="coin" transform="translate\(([-\d.]+)/);
+    expect(scoreMatch).not.toBeNull();
+    expect(coinMatch).not.toBeNull();
+    const scoreCenter = Number(scoreMatch![1]);
+    const coinX = Number(coinMatch![1]);
+    const scoreHalfWidth = ('101,558'.length * 32 * 0.68) / 2;
+    expect(coinX + 22 + 3).toBeLessThanOrEqual(scoreCenter - scoreHalfWidth + 1);
+  });
+
+  it('uses Victor Mono for labels and Special Gothic Expanded One for numbers', () => {
+    const patched = patchBugSvg(bugSnippet, values);
+    expect(patched).toMatch(/id="teamName"[^>]*font-family="Victor Mono"/);
+    expect(patched).toMatch(/id="teamTotal"[^>]*font-family="Victor Mono"/);
+    expect(patched).toMatch(/id="score"[^>]*font-family="Special Gothic Expanded One"/);
+    expect(patched).toMatch(/id="rankNumber"[^>]*font-family="Special Gothic Expanded One"/);
   });
 
   it('clips alienware header inside the svg viewport', () => {

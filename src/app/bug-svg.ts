@@ -55,17 +55,27 @@ export function formatTeamName(name: string, maxWidth = TEAM_NAME_MAX_WIDTH): st
 
 /** x center within the stats column (relative to translate(66 …) origin). */
 const STATS_TEXT_CENTER = 113;
+/** x center of the rank column (left of the stats column within #info). */
+const RANK_COLUMN_CENTER = 33;
 
 const TEAM_NAME_MAX_FONT_SIZE = 14;
 const TEAM_NAME_MAX_WIDTH = 200;
 const TEAM_NAME_CHAR_RATIO = 0.62;
 
 const SCORE_FONT_SIZE = 32;
-const SCOREBOX_Y = 14;
+const RANK_LABEL_Y = 11.25;
+const RANK_NUMBER_Y = 32.36;
+/** Width estimate for placing the coin tight against the score. */
+const COIN_LAYOUT_CHAR_RATIO = 0.68;
+const SCOREBOX_Y = 12;
+const SCORE_TSPAN_Y = 32.36;
 const TEAM_TOTAL_Y = 52;
 const COIN_WIDTH = 22;
-const COIN_GAP = 8;
-const COIN_Y = 9.5;
+const COIN_HEIGHT = 25.5;
+const COIN_GAP = 3;
+
+const BUG_LABEL_FONT = 'Victor Mono';
+const BUG_NUMBER_FONT = 'Special Gothic Expanded One';
 
 const PLACEHOLDER_VALUES: BugValues = {
   rankNumber: '0',
@@ -111,12 +121,39 @@ function serializeBugSvg(doc: Document): string {
 }
 
 function applyBugValues(scope: Document | ParentNode, values: BugValues): void {
-  setSvgText(scope, 'rankNumber', values.rankNumber);
   setSvgText(scope, 'score', values.score);
   centerBugStats(scope, values);
+  centerRankColumn(scope, values.rankNumber);
+  applyBugFonts(scope);
   if (scope instanceof Document && scope.documentElement.tagName === 'svg') {
     fixAlienLogoOverflow(scope);
   }
+}
+
+function applyBugFonts(scope: Document | ParentNode): void {
+  styleLabelFont(scope, 'teamName');
+  styleLabelFont(scope, 'teamTotal');
+  styleLabelFont(scope, 'rank');
+  styleNumberFont(scope, 'score');
+  styleNumberFont(scope, 'rankNumber');
+}
+
+function styleLabelFont(scope: Document | ParentNode, id: string): void {
+  const el = bugElement(scope, id);
+  if (!el) {
+    return;
+  }
+  el.setAttribute('font-family', BUG_LABEL_FONT);
+  el.setAttribute('font-weight', 'bold');
+}
+
+function styleNumberFont(scope: Document | ParentNode, id: string): void {
+  const el = bugElement(scope, id);
+  if (!el) {
+    return;
+  }
+  el.setAttribute('font-family', BUG_NUMBER_FONT);
+  el.removeAttribute('font-weight');
 }
 
 /** Prevent the header bar from rendering above the SVG viewport. */
@@ -138,6 +175,44 @@ function centerBugStats(scope: Document | ParentNode, values: BugValues): void {
   styleTeamName(scope, values.teamName, STATS_TEXT_CENTER);
   styleTeamTotal(scope, STATS_TEXT_CENTER);
   styleScorebox(scope, values.score, STATS_TEXT_CENTER);
+}
+
+function centerRankColumn(scope: Document | ParentNode, rankNumber: string): void {
+  styleRankLabel(scope, RANK_COLUMN_CENTER);
+  styleRankNumber(scope, rankNumber, RANK_COLUMN_CENTER);
+}
+
+function styleRankLabel(scope: Document | ParentNode, centerX: number): void {
+  const el = bugElement(scope, 'rank');
+  if (!el) {
+    return;
+  }
+
+  el.setAttribute('text-anchor', 'middle');
+  el.setAttribute('transform', 'translate(0 3)');
+
+  const tspan = el.querySelector('tspan');
+  if (tspan) {
+    tspan.setAttribute('x', String(centerX));
+    tspan.setAttribute('y', String(RANK_LABEL_Y));
+  }
+}
+
+function styleRankNumber(scope: Document | ParentNode, rankNumber: string, centerX: number): void {
+  const el = bugElement(scope, 'rankNumber');
+  if (!el) {
+    return;
+  }
+
+  el.setAttribute('text-anchor', 'middle');
+  el.setAttribute('transform', 'translate(0 14.152)');
+
+  const tspan = el.querySelector('tspan');
+  if (tspan) {
+    tspan.textContent = rankNumber;
+    tspan.setAttribute('x', String(centerX));
+    tspan.setAttribute('y', String(RANK_NUMBER_Y));
+  }
 }
 
 function styleTeamName(scope: Document | ParentNode, teamName: string, centerX: number): void {
@@ -183,20 +258,30 @@ function styleScorebox(scope: Document | ParentNode, scoreText: string, centerX:
     return;
   }
 
-  const scoreWidth = estimateTextWidth(scoreText, SCORE_FONT_SIZE);
+  const scoreWidth = estimateTextWidth(scoreText, SCORE_FONT_SIZE, COIN_LAYOUT_CHAR_RATIO);
   scoreEl.setAttribute('text-anchor', 'middle');
   scoreEl.removeAttribute('transform');
+  scoreEl.setAttribute('font-size', String(SCORE_FONT_SIZE));
 
   const tspan = scoreEl.querySelector('tspan');
   if (tspan) {
     tspan.setAttribute('x', String(centerX));
+    tspan.setAttribute('y', String(SCORE_TSPAN_Y));
   }
 
   const coinEl = bugElement(scope, 'coin');
   if (coinEl) {
-    const coinX = centerX - scoreWidth / 2 - COIN_GAP - COIN_WIDTH;
-    coinEl.setAttribute('transform', `translate(${coinX} ${COIN_Y})`);
+    const scoreLeft = centerX - scoreWidth / 2;
+    const coinX = scoreLeft - COIN_GAP - COIN_WIDTH;
+    const coinY = coinYForScoreBaseline(SCORE_TSPAN_Y, SCORE_FONT_SIZE, COIN_HEIGHT);
+    coinEl.setAttribute('transform', `translate(${coinX} ${coinY})`);
   }
+}
+
+/** Vertically center the coin icon on the score digits. */
+function coinYForScoreBaseline(baseline: number, fontSize: number, coinHeight: number): number {
+  const scoreCenterY = baseline - fontSize * 0.36;
+  return scoreCenterY - coinHeight / 2;
 }
 
 function ellipsizeText(
