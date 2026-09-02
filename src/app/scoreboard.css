@@ -1,118 +1,183 @@
 :host {
   display: block;
-  font-family: Urbanist, system-ui, sans-serif;
-  color: #f4f1ea;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #151515;
+  color: #e9e3dc;
+}
+
+.scoreboard-stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .scoreboard {
-  width: min(920px, 100%);
-  padding: 12px;
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform: scale(min(100vw / 1920, 100vh / 1080));
+  transform-origin: center;
+  background: #151515;
+  color: #e9e3dc;
 }
 
-.top-bar {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 14px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  background: rgba(12, 16, 22, 0.82);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
-}
-
-.logo {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.top-bar h1 {
-  margin: 0;
-  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #e8c37a;
+.background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
 }
 
 .team-grid {
+  position: absolute;
+  top: 322px;
+  left: 85px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, 844px);
+  gap: 65px 75px;
+  width: 1763px;
 }
 
-.team-card {
-  padding: 14px 16px 12px;
-  border-radius: 16px;
-  background: rgba(12, 16, 22, 0.78);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+.team {
+  --accent: #5bbefa;
+  width: 844px;
+  overflow: hidden;
 }
 
-.team-head {
+.place {
+  height: 31px;
+  color: var(--accent);
+  font:
+    400 19px/31px 'Victor Mono',
+    monospace;
+  letter-spacing: -0.57px;
+  text-transform: uppercase;
+}
+
+.team-header {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 10px;
+  grid-template-columns: minmax(0, 1fr) 454px;
+  align-items: center;
+  height: 34px;
+  margin-top: 7px;
 }
 
-.rank {
-  color: #e8c37a;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.team-head h2 {
+.team-name {
   margin: 0;
-  font-size: 1rem;
-}
-
-.team-total {
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  color: #e6e0d9;
+  font:
+    400 36px/34px 'Special Gothic Expanded One',
+    sans-serif;
+  letter-spacing: -1.08px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .money {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
-  font-variant-numeric: tabular-nums;
-}
-
-.currency-icon {
-  width: 1.2em;
-  height: 1.2em;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-
-li {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  font-variant-numeric: tabular-nums;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  color: #e9e2dc;
+  font:
+    400 36px/34px 'Special Gothic Expanded One',
+    sans-serif;
+  white-space: nowrap;
+}
+
+.coin {
+  width: 29px;
+  height: 34px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: var(--coin-mask) center / contain no-repeat;
+  mask: var(--coin-mask) center / contain no-repeat;
+}
+
+.team-total .coin {
+  color: #febd11;
+}
+
+.players {
+  display: grid;
+  gap: 29px;
+  width: 785px;
+  margin: 64px 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.team[data-slot='1'] .players,
+.team[data-slot='2'] .players {
+  margin-top: 66px;
+}
+
+.team[data-slot='3'] .players,
+.team[data-slot='4'] .players {
+  margin-top: 62px;
+  gap: 27px;
+}
+
+.team[data-slot='3'] .player:nth-child(3),
+.team[data-slot='4'] .player:nth-child(3) {
+  margin-top: 2px;
+}
+
+/* .team[data-slot='3'] .player,
+.team[data-slot='4'] .player {
+  margin-bottom: 5px;
+} */
+
+.player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 353px;
+  align-items: center;
+  height: 40px;
+  overflow: hidden;
+}
+
+.player-name {
+  overflow: hidden;
+  color: #e9e3dc;
+  font:
+    700 29px/40px 'Victor Mono',
+    monospace;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.player .money {
+  gap: 5px;
+  color: var(--accent);
+  font-size: 28px;
+  line-height: 34px;
+  opacity: 0.76;
+}
+
+.player .coin {
+  width: 21px;
+  height: 26px;
 }
 
 .status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   margin: 0;
-  color: rgba(244, 241, 234, 0.62);
-}
-
-@media (max-width: 720px) {
-  .team-grid {
-    grid-template-columns: 1fr;
-  }
+  color: rgba(233, 227, 220, 0.72);
+  font:
+    700 24px/1.4 'Victor Mono',
+    monospace;
 }

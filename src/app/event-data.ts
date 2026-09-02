@@ -20,6 +20,48 @@ export interface EventScoreboard {
   teams: TeamScore[];
 }
 
+export interface RankSlot {
+  /** Fixed leaderboard position (1–4). */
+  position: number;
+  team: TeamScore | null;
+}
+
+const RANK_ORDINALS = ['1st', '2nd', '3rd', '4th'] as const;
+const SLOT_COUNT = RANK_ORDINALS.length;
+
+/** Numeric rank from sheet ordinals (e.g. "2nd" → 2). */
+export function rankPositionFromSheet(rank: string): number | null {
+  const match = /\d+/.exec(rank.trim());
+  if (!match) {
+    return null;
+  }
+  const position = Number(match[0]);
+  return Number.isInteger(position) && position >= 1 && position <= SLOT_COUNT ? position : null;
+}
+
+/** Map teams into fixed rank slots for display. */
+export function teamsByRankSlot(teams: TeamScore[]): RankSlot[] {
+  const slots: RankSlot[] = Array.from({ length: SLOT_COUNT }, (_, index) => ({
+    position: index + 1,
+    team: null,
+  }));
+
+  for (const team of teams) {
+    const position = rankPositionFromSheet(team.rank);
+    if (position) {
+      slots[position - 1].team = team;
+    }
+  }
+
+  return slots;
+}
+
+/** Label for a fixed rank slot (e.g. 1 → "1st place"). */
+export function slotRankLabel(position: number): string {
+  const ordinal = RANK_ORDINALS[position - 1];
+  return ordinal ? `${ordinal} place` : `${position} place`;
+}
+
 export interface ViewOptions {
   preview: boolean;
   eventName: string;
@@ -58,7 +100,7 @@ export function formatAmount(value: number, _display?: string): string {
     return '0';
   }
   // Whole numbers only; period as thousands separator (e.g. 5024 → 5.024).
-  return whole.toLocaleString('de-DE', { maximumFractionDigits: 0 });
+  return whole.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
 export const CURRENCY_ICON = 'currency-icon.svg';

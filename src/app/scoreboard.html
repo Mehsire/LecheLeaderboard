@@ -1,38 +1,43 @@
-<section class="scoreboard">
-  <header class="top-bar">
-    <img class="logo" [src]="logo()" alt="" />
-    <h1>{{ view.options().eventName }}</h1>
-  </header>
+<section class="scoreboard-stage">
+  <main class="scoreboard" [style.--coin-mask]="coinMaskUrl">
+    <img class="background" [src]="backgroundUrl" alt="" />
 
-  @if (loading() && !teams().length) {
-    <p class="status">Loading…</p>
-  } @else if (error()) {
-    <p class="status">{{ error() }}</p>
-  } @else {
-    <div class="team-grid">
-      @for (team of teams(); track team.id) {
-        <article class="team-card">
-          <div class="team-head">
-            <span class="rank">{{ team.rank }}</span>
-            <h2>{{ team.name }}</h2>
-            <span class="money">
-              <img class="currency-icon" [src]="currencyIcon" alt="" />
-              {{ formatAmount(team.total, team.totalDisplay) }}
-            </span>
-          </div>
-          <ul>
-            @for (player of team.players; track player.name) {
-              <li>
-                <span>{{ player.name }}</span>
-                <span class="money">
-                  <img class="currency-icon" [src]="currencyIcon" alt="" />
-                  {{ formatAmount(player.total, player.display) }}
-                </span>
-              </li>
+    @if (loading() && !rankedSlots().some((slot) => slot.team)) {
+      <p class="status">Loading…</p>
+    } @else if (error()) {
+      <p class="status">{{ error() }}</p>
+    } @else {
+      <section class="team-grid" aria-label="Leaderboard">
+        @for (slot of rankedSlots(); track slot.position) {
+          <article
+            class="team team-card"
+            [attr.data-slot]="slot.position"
+            [style.--accent]="slotAccent(slot.position)"
+          >
+            <div class="place rank team-rank">{{ slotRankLabel(slot.position) }}</div>
+            @if (slot.team; as team) {
+              <div class="team-header team-head">
+                <h2 class="team-name">{{ team.name }}</h2>
+                <div class="money team-total">
+                  <span class="coin currency-icon" aria-hidden="true"></span>
+                  <span>{{ formatAmount(team.total, team.totalDisplay) }}</span>
+                </div>
+              </div>
+              <ol class="players">
+                @for (player of team.players; track player.name) {
+                  <li class="player">
+                    <span class="player-name">{{ player.name }}</span>
+                    <span class="money">
+                      <span class="coin currency-icon" aria-hidden="true"></span>
+                      <span>{{ formatAmount(player.total, player.display) }}</span>
+                    </span>
+                  </li>
+                }
+              </ol>
             }
-          </ul>
-        </article>
-      }
-    </div>
-  }
+          </article>
+        }
+      </section>
+    }
+  </main>
 </section>
