@@ -83,6 +83,7 @@ export function mergeScoreboardAndSummaries(
     return {
       ...team,
       rank: summary.rank || team.rank,
+      name: summary.name || team.name,
       total: summary.total,
       totalDisplay: summary.totalDisplay ?? team.totalDisplay,
     };

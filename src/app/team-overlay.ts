@@ -1,14 +1,28 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import {
+  afterRenderEffect,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  resource,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
+import {
+  BugRotationTiming,
+  formatBugScore,
+  patchBugSvg,
+  rankNumberFromSheet,
+  updateBugValuesInDom,
+} from './bug-svg';
 import { EventDataService } from './event-data.service';
-import { formatAmount, CURRENCY_ICON, teamById } from './event-data';
-import { loadEventSponsors } from './sponsors';
+import { teamById } from './event-data';
 import { ViewOptionsService } from './view-options';
-
-type Segment = 'team' | 'sponsors';
 
 @Component({
   selector: 'app-team-overlay',
@@ -20,21 +34,24 @@ export class TeamOverlay {
   private readonly route = inject(ActivatedRoute);
   private readonly eventData = inject(EventDataService);
   private readonly document = inject(DOCUMENT);
+  private readonly http = inject(HttpClient);
   protected readonly view = inject(ViewOptionsService);
-  protected readonly currencyIcon = CURRENCY_ICON;
+
+  private readonly bugContainer = viewChild<ElementRef<HTMLElement>>('bugContainer');
 
   private readonly teamId = toSignal(
     this.route.paramMap.pipe(map((params) => Number(params.get('teamId')))),
     { requireSync: true },
   );
 
-  private readonly stableSponsorImages = signal<string[]>([]);
-
-  private readonly sponsorResource = resource({
-    loader: () => loadEventSponsors(this.document.baseURI),
+  private readonly bugTemplate = resource({
+    loader: () =>
+      firstValueFrom(
+        this.http.get(new URL('bug.svg', this.document.baseURI).toString(), {
+          responseType: 'text',
+        }),
+      ),
   });
-
-  protected readonly segment = signal<Segment>('team');
 
   protected readonly team = computed(() => {
     const board = this.eventData.data();
@@ -42,7 +59,27 @@ export class TeamOverlay {
     return board && Number.isFinite(id) ? teamById(board, id) : undefined;
   });
 
+  private readonly rotationTiming = computed((): BugRotationTiming | null => {
+    const options = this.view.options();
+    if (options.teamSec === null || options.sponsorSec === null) {
+      return null;
+    }
+    return { teamSec: options.teamSec, sponsorSec: options.sponsorSec };
+  });
+
+  private readonly bugShellKey = computed(() => {
+    const rotation = this.rotationTiming();
+    return rotation ? `${rotation.teamSec}:${rotation.sponsorSec}` : 'static';
+  });
+
+  protected readonly ready = computed(
+    () => Boolean(this.bugTemplate.value()) && Boolean(this.team()),
+  );
+
   protected readonly error = computed(() => {
+    if (this.bugTemplate.error()) {
+      return 'Could not load the overlay graphic.';
+    }
     if (this.eventData.error()) {
       return this.eventData.error();
     }
@@ -52,60 +89,39 @@ export class TeamOverlay {
     return null;
   });
 
-  protected readonly loading = computed(() => this.eventData.loading());
-  protected readonly formatAmount = formatAmount;
-
-  protected readonly sponsorImages = computed(() => {
-    const fresh = this.sponsorResource.value();
-    return fresh?.length ? fresh : this.stableSponsorImages();
-  });
-
-  private readonly rotationConfig = computed(() => {
-    const options = this.view.options();
-    const images = this.stableSponsorImages();
-    if (options.teamSec === null || options.sponsorSec === null || images.length === 0) {
-      return null;
-    }
-    return { teamSec: options.teamSec, sponsorSec: options.sponsorSec };
-  });
-
-  protected readonly rotationEnabled = computed(() => this.rotationConfig() !== null);
+  protected readonly loading = computed(
+    () => this.eventData.loading() || this.bugTemplate.isLoading(),
+  );
 
   constructor() {
-    effect(() => {
-      const value = this.sponsorResource.value();
-      if (value?.length) {
-        this.stableSponsorImages.set(value);
-      }
-    });
-
-    effect((onCleanup) => {
-      const config = this.rotationConfig();
-      if (!config) {
-        this.segment.set('team');
+    afterRenderEffect(() => {
+      if (!this.ready()) {
         return;
       }
 
-      let current: Segment = 'team';
-      this.segment.set(current);
+      const template = this.bugTemplate.value();
+      const data = this.team();
+      const container = this.bugContainer()?.nativeElement;
+      const shellKey = this.bugShellKey();
+      const rotation = this.rotationTiming();
 
-      let handle: ReturnType<typeof setTimeout> | undefined;
-      const schedule = () => {
-        const waitMs =
-          (current === 'team' ? config.teamSec : config.sponsorSec) * 1000;
-        handle = setTimeout(() => {
-          current = current === 'team' ? 'sponsors' : 'team';
-          this.segment.set(current);
-          schedule();
-        }, waitMs);
+      if (!template || !data || !container) {
+        return;
+      }
+
+      const values = {
+        rankNumber: rankNumberFromSheet(data.rank),
+        teamName: data.name,
+        score: formatBugScore(data.total),
       };
 
-      schedule();
-      onCleanup(() => {
-        if (handle) {
-          clearTimeout(handle);
-        }
-      });
+      if (container.dataset['shellKey'] !== shellKey) {
+        container.innerHTML = patchBugSvg(template, values, rotation);
+        container.dataset['shellKey'] = shellKey;
+        return;
+      }
+
+      updateBugValuesInDom(container, values);
     });
   }
 }

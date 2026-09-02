@@ -9,26 +9,20 @@ OBS overlays and a full scoreboard fed by Google Sheet `1cPl3NuUcOhO2Ifw8xGjm_Vx
 | `/scoreboard` | Full 4-team board with event header + logo |
 | `/team/1` … `/team/4` | Mini overlay table: total + rank + team name |
 
-### Team overlay sponsor rotation
+### Team overlay page rotation
 
-Use URL timers to cycle the team card with a sponsor panel. Sponsor images are added under `public/sponsors/` and list filenames in `public/sponsors/manifest.json` (shared across all team overlays).
+Use URL timers to control how long the bug shows the team stats page versus the built-in sponsor promo page in `bug.svg`.
 
 | Param | Example | Meaning |
 | --- | --- | --- |
-| `teamSec` | `teamSec=30` | Seconds showing the team overlay |
-| `sponsorSec` | `sponsorSec=10` | Seconds showing sponsors |
+| `teamSec` | `teamSec=30` | Seconds showing the team stats page |
+| `sponsorSec` | `sponsorSec=10` | Seconds showing the sponsor promo page |
 
 Example URL:
 
 `http://localhost:4200/team/1?preview=1&teamSec=30&sponsorSec=10`
 
-Example `public/sponsors/manifest.json`:
-
-```json
-["acme.png", "widgets.svg"]
-```
-
-Drop `acme.png` and `widgets.svg` into `public/sponsors/`. Rotation runs when both timers are set **and** the manifest lists at least one file. Reload the page to pick up manifest changes.
+Both params must be set for the SVG to rotate. Without them, the bug stays on the team stats page.
 
 Add `?preview=1` when testing in a normal browser (opaque background).
 
