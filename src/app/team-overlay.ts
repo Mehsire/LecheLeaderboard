@@ -18,6 +18,7 @@ import {
   formatBugScore,
   patchBugSvg,
   rankNumberFromSheet,
+  syncRankLabelToNumber,
   updateBugValuesInDom,
 } from './bug-svg';
 import { EventDataService } from './event-data.service';
@@ -118,10 +119,26 @@ export class TeamOverlay {
       if (container.dataset['shellKey'] !== shellKey) {
         container.innerHTML = patchBugSvg(template, values, rotation);
         container.dataset['shellKey'] = shellKey;
+        void this.syncRankAlignment(container);
         return;
       }
 
       updateBugValuesInDom(container, values);
+      void this.syncRankAlignment(container);
     });
+  }
+
+  private async syncRankAlignment(container: HTMLElement): Promise<void> {
+    try {
+      await this.document.fonts?.ready;
+    } catch {
+      /* fonts.ready may be unavailable */
+    }
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+
+    syncRankLabelToNumber(container);
   }
 }

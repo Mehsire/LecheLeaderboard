@@ -98,7 +98,7 @@ describe('bug-svg', () => {
   it('centers team name, score, and team total on the same axis', () => {
     const patched = patchBugSvg(bugSnippet, values);
     expect(patched).toContain('text-anchor="middle"');
-    expect(patched).toContain('x="113"');
+    expect(patched).toContain('x="122"');
     expect(patched).toContain('font-size="14"');
     expect(patched).toContain('translate(66 12)');
     expect(patched).toContain('translate(66 52)');
@@ -109,8 +109,11 @@ describe('bug-svg', () => {
     expect(patched).toMatch(/id="rank"[^>]*text-anchor="middle"/);
     expect(patched).toMatch(/id="rankNumber"[^>]*text-anchor="middle"/);
     expect(patched).toContain('<text id="rank"');
-    expect(patched).toContain('x="33" y="11.25">RANK</tspan>');
-    expect(patched).toContain('x="33" y="32.36">2</tspan>');
+    expect(patched).toMatch(/id="rank"[^>]*\bx="33"/);
+    expect(patched).toMatch(/id="rankNumber"[^>]*\bx="33"/);
+    expect(patched).toContain('>2</tspan>');
+    expect(patched).not.toMatch(/id="rank"[^>]*transform=/);
+    expect(patched).not.toMatch(/id="rankNumber"[^>]*transform=/);
   });
 
   it('positions the coin to the left of a wide score without overlap', () => {

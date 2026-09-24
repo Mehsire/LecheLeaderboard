@@ -54,12 +54,12 @@ export function formatTeamName(name: string, maxWidth = TEAM_NAME_MAX_WIDTH): st
 }
 
 /** x center within the stats column (relative to translate(66 …) origin). */
-const STATS_TEXT_CENTER = 113;
+const STATS_TEXT_CENTER = 122;
 /** x center of the rank column (left of the stats column within #info). */
 const RANK_COLUMN_CENTER = 33;
 
 const TEAM_NAME_MAX_FONT_SIZE = 14;
-const TEAM_NAME_MAX_WIDTH = 200;
+const TEAM_NAME_MAX_WIDTH = 160;
 const TEAM_NAME_CHAR_RATIO = 0.62;
 
 const SCORE_FONT_SIZE = 32;
@@ -178,8 +178,8 @@ function centerBugStats(scope: Document | ParentNode, values: BugValues): void {
 }
 
 function centerRankColumn(scope: Document | ParentNode, rankNumber: string): void {
-  styleRankLabel(scope, RANK_COLUMN_CENTER);
   styleRankNumber(scope, rankNumber, RANK_COLUMN_CENTER);
+  styleRankLabel(scope, RANK_COLUMN_CENTER);
 }
 
 function styleRankLabel(scope: Document | ParentNode, centerX: number): void {
@@ -188,13 +188,16 @@ function styleRankLabel(scope: Document | ParentNode, centerX: number): void {
     return;
   }
 
+  // Use the same coordinate origin as #rankNumber (no leftover X translate from the export).
   el.setAttribute('text-anchor', 'middle');
-  el.setAttribute('transform', 'translate(0 3)');
+  el.setAttribute('x', String(centerX));
+  el.setAttribute('y', String(RANK_LABEL_Y + 3));
+  el.removeAttribute('transform');
 
   const tspan = el.querySelector('tspan');
   if (tspan) {
-    tspan.setAttribute('x', String(centerX));
-    tspan.setAttribute('y', String(RANK_LABEL_Y));
+    tspan.removeAttribute('x');
+    tspan.removeAttribute('y');
   }
 }
 
@@ -205,14 +208,66 @@ function styleRankNumber(scope: Document | ParentNode, rankNumber: string, cente
   }
 
   el.setAttribute('text-anchor', 'middle');
-  el.setAttribute('transform', 'translate(0 14.152)');
+  el.setAttribute('x', String(centerX));
+  el.setAttribute('y', String(RANK_NUMBER_Y + 14.152));
+  el.removeAttribute('transform');
 
   const tspan = el.querySelector('tspan');
   if (tspan) {
     tspan.textContent = rankNumber;
-    tspan.setAttribute('x', String(centerX));
-    tspan.setAttribute('y', String(RANK_NUMBER_Y));
+    tspan.removeAttribute('x');
+    tspan.removeAttribute('y');
   }
+}
+
+/** Nudge #rank so its ink center matches #rankNumber after fonts/layout. */
+export function syncRankLabelToNumber(root: ParentNode): number | null {
+  const rank = bugElement(root, 'rank') as SVGGraphicsElement | null;
+  const num = bugElement(root, 'rankNumber') as SVGGraphicsElement | null;
+  if (!rank || !num) {
+    return null;
+  }
+
+  let rankBox: DOMRect | null = null;
+  let numBox: DOMRect | null = null;
+  try {
+    rankBox = rank.getBoundingClientRect();
+    numBox = num.getBoundingClientRect();
+  } catch {
+    return null;
+  }
+
+  if (!rankBox.width || !numBox.width) {
+    return null;
+  }
+
+  const rankCx = rankBox.left + rankBox.width / 2;
+  const numCx = numBox.left + numBox.width / 2;
+  const deltaScreen = numCx - rankCx;
+  if (Math.abs(deltaScreen) < 0.25) {
+    return 0;
+  }
+
+  const svg = rank.ownerSVGElement;
+  if (!svg?.createSVGPoint || !svg.getScreenCTM) {
+    return null;
+  }
+
+  const ctm = svg.getScreenCTM();
+  if (!ctm) {
+    return null;
+  }
+
+  const inv = ctm.inverse();
+  const p0 = svg.createSVGPoint();
+  const p1 = svg.createSVGPoint();
+  p0.x = 0;
+  p1.x = deltaScreen;
+  const deltaSvg = p1.matrixTransform(inv).x - p0.matrixTransform(inv).x;
+  const currentX = Number(rank.getAttribute('x') || RANK_COLUMN_CENTER);
+  const nextX = currentX + deltaSvg;
+  rank.setAttribute('x', String(nextX));
+  return deltaSvg;
 }
 
 function styleTeamName(scope: Document | ParentNode, teamName: string, centerX: number): void {
