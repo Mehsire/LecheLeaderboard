@@ -392,9 +392,15 @@ function patchBugRotation(svg: string, timing: BugRotationTiming): string {
   let result = svg.replace(/27\.990035s/g, `${duration}s`);
   result = result.replace(/27\.99s/g, `${duration}s`);
   result = replaceOpacityKeyframes(result, keyframes);
+  result = replaceKeyframesBlock(
+    result,
+    'kf_scorebox_transform_0',
+    buildScoreboxTransformKeyframes(keyframes),
+  );
   result = patchCssKeyframePercentages(result, keyframes);
   result = patchSmilKeyTimes(result, keyframes);
   result = result.replace(/<g id="info" opacity="0"/g, '<g id="info" opacity="1"');
+
   return result;
 }
 
@@ -417,6 +423,8 @@ function replaceOpacityKeyframes(
 
 function buildInfoOpacityKeyframes(keyframes: ReturnType<typeof bugCycleKeyframes>): string {
   const { teamHoldEnd, sponsorStart, sponsorEnd } = keyframes;
+  const teamOutMid = (teamHoldEnd + sponsorStart) / 2;
+  const teamInMid = (sponsorEnd + 100) / 2;
   return `@keyframes kf_info_opacity_0 {
   0% {
     animation-timing-function: ease-in-out;
@@ -426,11 +434,19 @@ function buildInfoOpacityKeyframes(keyframes: ReturnType<typeof bugCycleKeyframe
     animation-timing-function: ease-in-out;
     opacity: 1;
   }
+  ${formatPercent(teamOutMid)}% {
+    animation-timing-function: linear;
+    opacity: 0;
+  }
   ${formatPercent(sponsorStart)}% {
     animation-timing-function: linear;
     opacity: 0;
   }
   ${formatPercent(sponsorEnd)}% {
+    animation-timing-function: linear;
+    opacity: 0;
+  }
+  ${formatPercent(teamInMid)}% {
     animation-timing-function: ease-in-out;
     opacity: 0;
   }
@@ -443,12 +459,18 @@ function buildInfoOpacityKeyframes(keyframes: ReturnType<typeof bugCycleKeyframe
 
 function buildSubwayPromoOpacityKeyframes(keyframes: ReturnType<typeof bugCycleKeyframes>): string {
   const { teamHoldEnd, sponsorStart, sponsorEnd } = keyframes;
+  const teamOutMid = (teamHoldEnd + sponsorStart) / 2;
+  const teamInMid = (sponsorEnd + 100) / 2;
   return `@keyframes kf_subwayPromo_opacity_0 {
   0% {
     animation-timing-function: linear;
     opacity: 0;
   }
   ${formatPercent(teamHoldEnd)}% {
+    animation-timing-function: linear;
+    opacity: 0;
+  }
+  ${formatPercent(teamOutMid)}% {
     animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
     opacity: 0;
   }
@@ -460,9 +482,52 @@ function buildSubwayPromoOpacityKeyframes(keyframes: ReturnType<typeof bugCycleK
     animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
     opacity: 1;
   }
+  ${formatPercent(teamInMid)}% {
+    animation-timing-function: linear;
+    opacity: 0;
+  }
   100% {
     animation-timing-function: linear;
     opacity: 0;
+  }
+}`;
+}
+
+/** Grey scorebox cover: stay full-bleed while sponsor is visible so black rank never shows under it. */
+function buildScoreboxTransformKeyframes(keyframes: ReturnType<typeof bugCycleKeyframes>): string {
+  const { teamHoldEnd, sponsorStart, sponsorEnd } = keyframes;
+  const teamOutMid = (teamHoldEnd + sponsorStart) / 2;
+  const teamInMid = (sponsorEnd + 100) / 2;
+  const teamPose =
+    'translateX(105px) translateY(23px) translateX(-39px) translateY(0px)';
+  const sponsorPose =
+    'translateX(105px) translateY(23px) translateX(-105px) translateY(0px)';
+  return `@keyframes kf_scorebox_transform_0 {
+  0% {
+    transform: ${teamPose};
+  }
+  ${formatPercent(teamHoldEnd)}% {
+    animation-timing-function: ease-in-out;
+    transform: ${teamPose};
+  }
+  ${formatPercent(teamOutMid)}% {
+    animation-timing-function: linear;
+    transform: ${sponsorPose};
+  }
+  ${formatPercent(sponsorStart)}% {
+    animation-timing-function: linear;
+    transform: ${sponsorPose};
+  }
+  ${formatPercent(sponsorEnd)}% {
+    animation-timing-function: linear;
+    transform: ${sponsorPose};
+  }
+  ${formatPercent(teamInMid)}% {
+    animation-timing-function: ease-in-out;
+    transform: ${sponsorPose};
+  }
+  100% {
+    transform: ${teamPose};
   }
 }`;
 }
@@ -498,14 +563,23 @@ function replaceKeyframesBlock(svg: string, name: string, replacement: string): 
 
 function disableBugRotation(svg: string): string {
   let result = svg.replace(/<animate\b[^>]*\/>/g, '');
+  // Team-page rest pose: keyframes use translate(105,23) + translateX(-39) => (66,23).
+  // animation:none alone falls back to the SVG attribute at (105,23), exposing extra black.
   result = result.replace(
     '</style>',
     `#info{opacity:1!important;animation:none!important}` +
       `#subwayPromo{opacity:0!important;animation:none!important}` +
-      `#alien_logo,#scorebox,#bar{animation:none!important}` +
+      `#alien_logo{animation:none!important}` +
+      `#scorebox{animation:none!important;transform:translate(66px,23px)!important}` +
+      `#bar{animation:none!important}` +
       `</style>`,
   );
-  return result.replace(/<g id="info" opacity="0"/g, '<g id="info" opacity="1"');
+  result = result.replace(
+    /(<path id="scorebox" transform=")translate\(105 23\)"/,
+    '$1translate(66 23)"',
+  );
+  result = result.replace(/<g id="info" opacity="0"/g, '<g id="info" opacity="1"');
+  return result;
 }
 
 function patchCssKeyframePercentages(
@@ -525,7 +599,8 @@ function patchCssKeyframePercentages(
     const blockName = result.slice(blockStart, nameEnd);
     if (
       blockName.includes('kf_info_opacity_0') ||
-      blockName.includes('kf_subwayPromo_opacity_0')
+      blockName.includes('kf_subwayPromo_opacity_0') ||
+      blockName.includes('kf_scorebox_transform_0')
     ) {
       const braceStart = nameEnd;
       let depth = 0;

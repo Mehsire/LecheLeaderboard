@@ -143,27 +143,40 @@ describe('bug-svg', () => {
     expect(patched).toContain('id="alien_logo" transform="translate(0 0)"');
   });
 
-  it('remaps every keyframe step in multi-step css animations', () => {
+  it('keeps scorebox full-bleed until sponsor finishes fading out', () => {
     const snippet = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg">
 <style>
+@keyframes kf_scorebox_transform_0 {
+  0% { transform: translateX(105px) translateY(23px) translateX(-39px) translateY(0px); }
+  2.25% { transform: translateX(105px) translateY(23px) translateX(-105px) translateY(0px); }
+  26.42% { transform: translateX(105px) translateY(23px) translateX(-105px) translateY(0px); }
+  28.71% { transform: translateX(105px) translateY(23px) translateX(-39px) translateY(0px); }
+  100% { transform: translateX(105px) translateY(23px) translateX(-39px) translateY(0px); }
+}
+@keyframes kf_subwayPromo_opacity_0 {
+  0% { opacity: 0; }
+  2.25% { opacity: 1; }
+  26.42% { opacity: 1; }
+  100% { opacity: 0; }
+}
 @keyframes kf_info_opacity_0 {
   0% { opacity: 1; }
   2.25% { opacity: 0; }
   26.42% { opacity: 0; }
-  28.71% { opacity: 1; }
   100% { opacity: 1; }
 }
-#info { animation: kf_info_opacity_0 27.990035s linear infinite; }
 </style>
 </svg>`;
-    const patched = patchBugSvg(snippet, values, { teamSec: 30, sponsorSec: 10 });
-    expect(patched).not.toContain('26.42%');
-    expect(patched).not.toContain('28.71%');
-    expect(patched).not.toContain('2.25%');
-    expect(patched).toContain('opacity: 1');
-    expect(patched).toContain('72.6392%');
+    const patched = patchBugSvg(snippet, values, { teamSec: 3, sponsorSec: 3 });
+    const scoreboxBlock = patched.match(/@keyframes kf_scorebox_transform_0 \{[\s\S]*?\n\}/)?.[0] ?? '';
+    expect(scoreboxBlock).toContain('translateX(-105px)');
+    expect(scoreboxBlock).toContain('translateX(-39px)');
+    // Mid-return still covered; team pose only at cycle edges.
+    expect(scoreboxBlock).toMatch(/95\.5479%[\s\S]*translateX\(-105px\)/);
+    expect(scoreboxBlock).toMatch(/100%\s*\{[\s\S]*translateX\(-39px\)/);
   });
+
 
   it('updates svg animation duration when rotation timing is set', () => {
     const patched = patchBugSvg(rotationSnippet, values, { teamSec: 30, sponsorSec: 10 });
@@ -179,7 +192,22 @@ describe('bug-svg', () => {
     const patched = patchBugSvg(rotationSnippet, values);
     expect(patched).toContain('#info{opacity:1!important;animation:none!important}');
     expect(patched).toContain('#subwayPromo{opacity:0!important;animation:none!important}');
+    expect(patched).toContain('#scorebox{animation:none!important;transform:translate(66px,23px)!important}');
     expect(patched).not.toContain('<animate');
+  });
+
+  it('pins scorebox to the team-rest pose when rotation is disabled', () => {
+    const snippet = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg">
+<style>
+#scorebox { animation: kf_scorebox_transform_0 27.990035s linear infinite; }
+</style>
+<path id="scorebox" transform="translate(105 23)" d="M0 0H10V10H0V0Z"/>
+<g id="info" opacity="0"></g>
+</svg>`;
+    const patched = patchBugSvg(snippet, values);
+    expect(patched).toContain('id="scorebox" transform="translate(66 23)"');
+    expect(patched).toContain('transform:translate(66px,23px)!important');
   });
 
   it('builds a static shell via patchBugShell', () => {
