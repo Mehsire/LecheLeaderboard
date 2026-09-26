@@ -7,7 +7,7 @@ export interface PlayerScore {
 }
 
 export interface TeamScore {
-  /** 1–4 from the sheet label "Team N" */
+  /** Stable OBS slot 1–4 from the summary sheet row order (AD9:AL12). */
   id: number;
   rank: string;
   name: string;

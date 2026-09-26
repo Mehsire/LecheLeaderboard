@@ -32,7 +32,7 @@ export function parseScoreboard(response: GvizResponse): EventScoreboard {
   const index = columnMap(table);
 
   const teams = table.rows
-    .map((row) => parseTeamRow(row, index))
+    .map((row, rowIndex) => parseTeamRow(row, index, rowIndex + 1))
     .filter((team): team is TeamScore => team !== null);
 
   return { teams: sortTeamsById(teams) };
@@ -43,56 +43,50 @@ export function parseTeamSummaries(response: GvizResponse): TeamScore[] {
   const index = columnMap(table);
   const teams: TeamScore[] = [];
 
-  for (const row of table.rows) {
-    const name = text(row, index.teamName);
-    const id = teamIdFromName(name);
-    if (!id) {
-      continue;
+  table.rows.forEach((row, rowIndex) => {
+    const team = parseTeamRow(row, index, rowIndex + 1, { requirePlayers: false });
+    if (team) {
+      teams.push(team);
     }
-
-    const totalCell = cell(row, index.teamTotal);
-    const total = number(totalCell);
-    if (!Number.isFinite(total)) {
-      continue;
-    }
-
-    teams.push({
-      id,
-      rank: text(row, index.rank),
-      name,
-      total,
-      totalDisplay: totalCell?.f ?? undefined,
-      players: [],
-    });
-  }
+  });
 
   return teams;
 }
 
+/**
+ * Join scoreboard player rows with summary rows by team name.
+ * Summary row order defines stable OBS ids for `/team/1` … `/team/4`.
+ */
 export function mergeScoreboardAndSummaries(
   scoreboard: EventScoreboard,
   summaries: TeamScore[],
 ): EventScoreboard {
-  const summaryById = new Map(summaries.map((team) => [team.id, team]));
-
-  const teams = scoreboard.teams.map((team) => {
-    const summary = summaryById.get(team.id);
-    if (!summary) {
-      return team;
-    }
-    return {
-      ...team,
-      rank: summary.rank || team.rank,
-      name: summary.name || team.name,
-      total: summary.total,
-      totalDisplay: summary.totalDisplay ?? team.totalDisplay,
-    };
-  });
+  const boardByName = new Map(
+    scoreboard.teams.map((team) => [normalizeTeamName(team.name), team]),
+  );
+  const teams: TeamScore[] = [];
 
   for (const summary of summaries) {
-    if (!teams.some((team) => team.id === summary.id)) {
-      teams.push(summary);
+    const key = normalizeTeamName(summary.name);
+    const board = boardByName.get(key);
+    if (board) {
+      boardByName.delete(key);
     }
+
+    const rank = nonEmpty(summary.rank) || board?.rank || '';
+    teams.push({
+      id: summary.id,
+      rank,
+      name: summary.name || board?.name || '',
+      total: Number.isFinite(summary.total) ? summary.total : (board?.total ?? 0),
+      totalDisplay: summary.totalDisplay ?? board?.totalDisplay,
+      players: board?.players ?? [],
+    });
+  }
+
+  let nextId = summaries.length > 0 ? Math.max(...summaries.map((team) => team.id)) + 1 : 1;
+  for (const board of boardByName.values()) {
+    teams.push({ ...board, id: nextId++ });
   }
 
   return { teams: sortTeamsById(teams) };
@@ -101,10 +95,12 @@ export function mergeScoreboardAndSummaries(
 function parseTeamRow(
   row: { c: Array<GvizCell | null> },
   index: ColumnIndex,
+  slotId: number,
+  options: { requirePlayers?: boolean } = {},
 ): TeamScore | null {
+  const requirePlayers = options.requirePlayers !== false;
   const name = text(row, index.teamName);
-  const id = teamIdFromName(name);
-  if (!id) {
+  if (!name) {
     return null;
   }
 
@@ -120,12 +116,12 @@ function parseTeamRow(
     player(row, index.player3, index.p3Total),
   ].filter((entry): entry is PlayerScore => entry !== null);
 
-  if (!players.length) {
+  if (requirePlayers && !players.length) {
     return null;
   }
 
   return {
-    id,
+    id: slotId,
     rank: text(row, index.rank),
     name,
     total,
@@ -148,9 +144,12 @@ function player(
   return { name, total, display: totalCell?.f ?? undefined };
 }
 
-function teamIdFromName(name: string): number | null {
-  const match = /^Team\s+(\d+)$/i.exec(name.trim());
-  return match ? Number(match[1]) : null;
+function normalizeTeamName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function nonEmpty(value: string | undefined): string {
+  return value?.trim() ?? '';
 }
 
 function sortTeamsById(teams: TeamScore[]): TeamScore[] {

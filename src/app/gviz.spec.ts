@@ -16,7 +16,7 @@ const sampleTable = {
     {
       c: [
         { v: '1st' },
-        { v: 'Team 3' },
+        { v: 'Team Chung' },
         { v: 5024, f: '5024' },
         { v: 'Guy 7' },
         { v: 5007, f: '5007' },
@@ -29,7 +29,7 @@ const sampleTable = {
     {
       c: [
         { v: '2nd' },
-        { v: 'Team 4' },
+        { v: 'Team Lord' },
         { v: 1641, f: '1641' },
         { v: 'Guy 10' },
         { v: 910, f: '910' },
@@ -42,7 +42,7 @@ const sampleTable = {
     {
       c: [
         { v: '3rd' },
-        { v: 'Team 2' },
+        { v: 'Team Gus' },
         { v: 1014, f: '1014' },
         { v: 'Guy 4' },
         { v: 1003, f: '1003' },
@@ -55,7 +55,7 @@ const sampleTable = {
     {
       c: [
         { v: '4th' },
-        { v: 'Team 1' },
+        { v: 'Team Oskar' },
         { v: 1006, f: '1006' },
         { v: 'Guy 1' },
         { v: 1001, f: '1001' },
@@ -68,31 +68,50 @@ const sampleTable = {
   ],
 };
 
+/** Summary rows are fixed OBS slots (not rank-sorted). */
 const summaryTable = {
   cols: sampleTable.cols,
   rows: [
-    { c: [{ v: '4th' }, { v: 'Team 1' }, { v: 1006, f: '1006' }, null, null, null, null, null, null] },
-    { c: [{ v: '3rd' }, { v: 'Team 2' }, { v: 1014, f: '1014' }, null, null, null, null, null, null] },
-    { c: [{ v: '1st' }, { v: 'Team 3' }, { v: 5024, f: '5024' }, null, null, null, null, null, null] },
-    { c: [{ v: '2nd' }, { v: 'Team 4' }, { v: 1641, f: '1641' }, null, null, null, null, null, null] },
+    { c: [{ v: ' ' }, { v: 'Team Oskar' }, { v: 1006, f: '1006' }, null, null, null, null, null, null] },
+    { c: [{ v: '2nd' }, { v: 'Team Lord' }, { v: 1641, f: '1641' }, null, null, null, null, null, null] },
+    { c: [{ v: '1st' }, { v: 'Team Chung' }, { v: 5024, f: '5024' }, null, null, null, null, null, null] },
+    { c: [{ v: '3rd' }, { v: 'Team Gus' }, { v: 1014, f: '1014' }, null, null, null, null, null, null] },
   ],
 };
 
 describe('gviz event parser', () => {
-  it('keeps teams in fixed Team 1–4 order', () => {
+  it('accepts arbitrary team names using sheet row order as ids', () => {
     const board = parseScoreboard({ status: 'ok', table: sampleTable });
     expect(board.teams.map((team) => team.id)).toEqual([1, 2, 3, 4]);
-    expect(board.teams.map((team) => team.rank)).toEqual(['4th', '3rd', '1st', '2nd']);
+    expect(board.teams.map((team) => team.name)).toEqual([
+      'Team Chung',
+      'Team Lord',
+      'Team Gus',
+      'Team Oskar',
+    ]);
     expect(board.teams[0]?.players).toHaveLength(3);
   });
 
-  it('merges team summary ranks and totals from AD9:AL12', () => {
+  it('merges scoreboard players onto summary slots by team name', () => {
     const scoreboard = parseScoreboard({ status: 'ok', table: sampleTable });
     const summaries = parseTeamSummaries({ status: 'ok', table: summaryTable });
     const merged = mergeScoreboardAndSummaries(scoreboard, summaries);
+
     expect(merged.teams.map((team) => team.id)).toEqual([1, 2, 3, 4]);
-    const team1 = merged.teams.find((team) => team.id === 1);
-    expect(team1?.rank).toBe('4th');
-    expect(team1?.players[0]?.name).toBe('Guy 1');
+    expect(merged.teams.map((team) => team.name)).toEqual([
+      'Team Oskar',
+      'Team Lord',
+      'Team Chung',
+      'Team Gus',
+    ]);
+
+    const oskar = merged.teams.find((team) => team.id === 1);
+    expect(oskar?.rank).toBe('4th');
+    expect(oskar?.players[0]?.name).toBe('Guy 1');
+
+    const chung = merged.teams.find((team) => team.id === 3);
+    expect(chung?.rank).toBe('1st');
+    expect(chung?.total).toBe(5024);
+    expect(chung?.players).toHaveLength(3);
   });
 });

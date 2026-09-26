@@ -86,7 +86,7 @@ export class TeamOverlay {
       return this.eventData.error();
     }
     if (this.eventData.data() && !this.team()) {
-      return `No team found for Team ${this.teamId()}.`;
+      return `No team found for overlay slot ${this.teamId()}.`;
     }
     return null;
   });
