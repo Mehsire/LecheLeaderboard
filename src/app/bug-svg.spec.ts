@@ -6,6 +6,7 @@ import {
   patchBugShell,
   patchBugSvg,
   rankNumberFromSheet,
+  scoreFontSizeForWidth,
   updateBugValuesInDom,
 } from './bug-svg';
 
@@ -98,7 +99,7 @@ describe('bug-svg', () => {
   it('centers team name, score, and team total on the same axis', () => {
     const patched = patchBugSvg(bugSnippet, values);
     expect(patched).toContain('text-anchor="middle"');
-    expect(patched).toContain('x="122"');
+    expect(patched).toContain('x="102"');
     expect(patched).toContain('font-size="14"');
     expect(patched).toContain('translate(66 12)');
     expect(patched).toContain('translate(66 52)');
@@ -117,16 +118,70 @@ describe('bug-svg', () => {
   });
 
   it('positions the coin to the left of a wide score without overlap', () => {
-    const patched = patchBugSvg(bugSnippet, { ...values, score: '101,558' });
-    const scoreMatch = patched.match(/id="score"[^>]*><tspan x="(\d+(?:\.\d+)?)"/);
+    const score = '101,558';
+    const patched = patchBugSvg(bugSnippet, { ...values, score });
+    const scoreMatch = patched.match(
+      /id="score"[^>]*font-size="(\d+(?:\.\d+)?)"[^>]*><tspan x="(\d+(?:\.\d+)?)"/,
+    );
     const coinMatch = patched.match(/id="coin" transform="translate\(([-\d.]+)/);
     expect(scoreMatch).not.toBeNull();
     expect(coinMatch).not.toBeNull();
-    const scoreCenter = Number(scoreMatch![1]);
+    const fontSize = Number(scoreMatch![1]);
+    const scoreCenter = Number(scoreMatch![2]);
     const coinX = Number(coinMatch![1]);
-    const scoreHalfWidth = ('101,558'.length * 32 * 0.68) / 2;
-    expect(coinX + 22 + 3).toBeLessThanOrEqual(scoreCenter - scoreHalfWidth + 1);
+    const scale = fontSize / 32;
+    const scoreHalfWidth = (score.length * fontSize * 0.7) / 2;
+    expect(coinX + 22 * scale + 3 * scale).toBeLessThanOrEqual(scoreCenter - scoreHalfWidth + 1);
   });
+
+  it('shrinks million-scale scores to fit the grey container', () => {
+    const score = '1,099,912';
+    expect(scoreFontSizeForWidth(score)).toBeLessThan(32);
+    expect(scoreFontSizeForWidth('5,024')).toBe(32);
+
+    const patched = patchBugSvg(bugSnippet, { ...values, score });
+    const scoreMatch = patched.match(/id="score"[^>]*font-size="(\d+(?:\.\d+)?)"/);
+    const coinMatch = patched.match(
+      /id="coin" transform="translate\(([-\d.]+) [^)]+\)( scale\(([\d.]+)\))?/,
+    );
+    expect(scoreMatch).not.toBeNull();
+    expect(coinMatch).not.toBeNull();
+    expect(Number(scoreMatch![1])).toBeLessThan(32);
+    expect(Number(coinMatch![1])).toBeGreaterThanOrEqual(0);
+    expect(coinMatch![0]).toContain('scale(');
+    expect(Number(coinMatch![3])).toBeCloseTo(Number(scoreMatch![1]) / 32, 2);
+  });
+
+  it('keeps coin clear of million-scale scores', () => {
+    const score = '1,234,567';
+    const patched = patchBugSvg(bugSnippet, { ...values, score });
+    const scoreMatch = patched.match(
+      /id="score"[^>]*font-size="(\d+(?:\.\d+)?)"[^>]*><tspan x="(\d+(?:\.\d+)?)"/,
+    );
+    const coinMatch = patched.match(/id="coin" transform="translate\(([-\d.]+)/);
+    expect(scoreMatch).not.toBeNull();
+    expect(coinMatch).not.toBeNull();
+    const fontSize = Number(scoreMatch![1]);
+    const scoreCenter = Number(scoreMatch![2]);
+    const coinX = Number(coinMatch![1]);
+    const scale = fontSize / 32;
+    const scoreHalfWidth = (score.length * fontSize * 0.7) / 2;
+    expect(coinX + 22 * scale + 3 * scale).toBeLessThanOrEqual(scoreCenter - scoreHalfWidth + 1);
+  });
+
+  it('raises the score baseline when the font shrinks so it stays between labels', () => {
+    const small = patchBugSvg(bugSnippet, values);
+    const large = patchBugSvg(bugSnippet, { ...values, score: '1,099,912' });
+    const smallY = Number(small.match(/id="score"[^>]*><tspan[^>]*y="(\d+(?:\.\d+)?)"/)?.[1]);
+    const largeY = Number(large.match(/id="score"[^>]*><tspan[^>]*y="(\d+(?:\.\d+)?)"/)?.[1]);
+    const smallSize = Number(small.match(/id="score"[^>]*font-size="(\d+(?:\.\d+)?)"/)?.[1]);
+    const largeSize = Number(large.match(/id="score"[^>]*font-size="(\d+(?:\.\d+)?)"/)?.[1]);
+    expect(largeSize).toBeLessThan(smallSize);
+    // Smaller font → lower baseline offset from optical center formula (baseline = center + 0.36*size)
+    // Actually baseline = bandCenter - scoreboxY + 0.36*fontSize, so smaller font → smaller baseline y
+    expect(largeY).toBeLessThan(smallY);
+  });
+
 
   it('uses Victor Mono for labels and Special Gothic Expanded One for numbers', () => {
     const patched = patchBugSvg(bugSnippet, values);

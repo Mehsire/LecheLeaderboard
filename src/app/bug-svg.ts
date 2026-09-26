@@ -53,8 +53,6 @@ export function formatTeamName(name: string, maxWidth = TEAM_NAME_MAX_WIDTH): st
   return ellipsizeText(name.trim().toUpperCase(), maxWidth, TEAM_NAME_MAX_FONT_SIZE, TEAM_NAME_CHAR_RATIO);
 }
 
-/** x center within the stats column (relative to translate(66 …) origin). */
-const STATS_TEXT_CENTER = 122;
 /** x center of the rank column (left of the stats column within #info). */
 const RANK_COLUMN_CENTER = 33;
 
@@ -63,16 +61,49 @@ const TEAM_NAME_MAX_WIDTH = 160;
 const TEAM_NAME_CHAR_RATIO = 0.62;
 
 const SCORE_FONT_SIZE = 32;
+const SCORE_MIN_FONT_SIZE = 14;
+/** Bug SVG viewBox width; score must stay inside the grey panel. */
+const BUG_VIEWBOX_WIDTH = 270;
+const SCOREBOX_ORIGIN_X = 66;
+/**
+ * Center of the grey stats panel (right of the rank column), in local coords
+ * relative to translate(SCOREBOX_ORIGIN_X …).
+ */
+const STATS_TEXT_CENTER = (BUG_VIEWBOX_WIDTH - SCOREBOX_ORIGIN_X) / 2;
+const SCORE_EDGE_PAD = 6;
 const RANK_LABEL_Y = 11.25;
 const RANK_NUMBER_Y = 32.36;
-/** Width estimate for placing the coin tight against the score. */
-const COIN_LAYOUT_CHAR_RATIO = 0.68;
+/**
+ * Width estimate for placing the coin tight against the score.
+ * Special Gothic Expanded One is wide; 0.68 underestimates and overlaps
+ * (runtime: "40,428" actual≈0.76). Slightly above measured for safety when fitting.
+ */
+const COIN_LAYOUT_CHAR_RATIO = 0.78;
+/** Slightly tighter than fit ratio so the coin hugs the digits. */
+const COIN_PLACE_CHAR_RATIO = 0.7;
 const SCOREBOX_Y = 12;
-const SCORE_TSPAN_Y = 32.36;
+const TEAM_NAME_BASELINE_Y = 13.1;
 const TEAM_TOTAL_Y = 52;
+const TEAM_TOTAL_TSPAN_Y = 9.825;
+const TEAM_TOTAL_FONT_SIZE = 9;
 const COIN_WIDTH = 22;
 const COIN_HEIGHT = 25.5;
 const COIN_GAP = 3;
+
+/**
+ * Vertical midpoint between team name and TEAM TOTAL, in #info coords
+ * (same space as scorebox_2's parent before SCOREBOX_Y).
+ */
+function scoreBandCenterY(): number {
+  const nameBottom = TEAM_NAME_BASELINE_Y + TEAM_NAME_MAX_FONT_SIZE * 0.2;
+  const totalTop = TEAM_TOTAL_Y + TEAM_TOTAL_TSPAN_Y - TEAM_TOTAL_FONT_SIZE * 0.8;
+  return (nameBottom + totalTop) / 2;
+}
+
+/** Score baseline (scorebox-local) so the glyph optical center sits in the label gap. */
+function scoreBaselineForFont(fontSize: number): number {
+  return scoreBandCenterY() - SCOREBOX_Y + fontSize * 0.36;
+}
 
 const BUG_LABEL_FONT = 'Victor Mono';
 const BUG_NUMBER_FONT = 'Special Gothic Expanded One';
@@ -279,11 +310,13 @@ function styleTeamName(scope: Document | ParentNode, teamName: string, centerX: 
   const displayName = formatTeamName(teamName);
   el.setAttribute('text-anchor', 'middle');
   el.setAttribute('font-size', String(TEAM_NAME_MAX_FONT_SIZE));
+  el.setAttribute('transform', `translate(${SCOREBOX_ORIGIN_X})`);
 
   const tspan = el.querySelector('tspan');
   if (tspan) {
     tspan.textContent = displayName;
     tspan.setAttribute('x', String(centerX));
+    tspan.setAttribute('y', String(TEAM_NAME_BASELINE_Y));
   }
 }
 
@@ -294,18 +327,20 @@ function styleTeamTotal(scope: Document | ParentNode, centerX: number): void {
   }
 
   el.setAttribute('text-anchor', 'middle');
-  el.setAttribute('transform', `translate(66 ${TEAM_TOTAL_Y})`);
+  el.setAttribute('font-size', String(TEAM_TOTAL_FONT_SIZE));
+  el.setAttribute('transform', `translate(${SCOREBOX_ORIGIN_X} ${TEAM_TOTAL_Y})`);
 
   const tspan = el.querySelector('tspan');
   if (tspan) {
     tspan.setAttribute('x', String(centerX));
+    tspan.setAttribute('y', String(TEAM_TOTAL_TSPAN_Y));
   }
 }
 
-function styleScorebox(scope: Document | ParentNode, scoreText: string, centerX: number): void {
+function styleScorebox(scope: Document | ParentNode, scoreText: string, _centerX: number): void {
   const scorebox = bugElement(scope, 'scorebox_2');
   if (scorebox) {
-    scorebox.setAttribute('transform', `translate(66 ${SCOREBOX_Y})`);
+    scorebox.setAttribute('transform', `translate(${SCOREBOX_ORIGIN_X} ${SCOREBOX_Y})`);
   }
 
   const scoreEl = bugElement(scope, 'score');
@@ -313,24 +348,176 @@ function styleScorebox(scope: Document | ParentNode, scoreText: string, centerX:
     return;
   }
 
-  const scoreWidth = estimateTextWidth(scoreText, SCORE_FONT_SIZE, COIN_LAYOUT_CHAR_RATIO);
+  const fontSize = scoreFontSizeForWidth(scoreText);
+  const scoreWidth = estimateTextWidth(scoreText, fontSize, COIN_PLACE_CHAR_RATIO);
+  const layout = scoreClusterLayout(fontSize, scoreWidth);
+
   scoreEl.setAttribute('text-anchor', 'middle');
   scoreEl.removeAttribute('transform');
-  scoreEl.setAttribute('font-size', String(SCORE_FONT_SIZE));
+  scoreEl.setAttribute('font-size', String(fontSize));
 
   const tspan = scoreEl.querySelector('tspan');
   if (tspan) {
-    tspan.setAttribute('x', String(centerX));
-    tspan.setAttribute('y', String(SCORE_TSPAN_Y));
+    tspan.setAttribute('x', String(layout.scoreCenter));
+    tspan.setAttribute('y', String(layout.baseline));
   }
 
   const coinEl = bugElement(scope, 'coin');
   if (coinEl) {
-    const scoreLeft = centerX - scoreWidth / 2;
-    const coinX = scoreLeft - COIN_GAP - COIN_WIDTH;
-    const coinY = coinYForScoreBaseline(SCORE_TSPAN_Y, SCORE_FONT_SIZE, COIN_HEIGHT);
-    coinEl.setAttribute('transform', `translate(${coinX} ${coinY})`);
+    coinEl.setAttribute('transform', coinTransform(layout));
   }
+}
+
+/** Usable width inside scorebox_2 for the coin + score cluster. */
+function statsAvailableWidth(): number {
+  return BUG_VIEWBOX_WIDTH - SCOREBOX_ORIGIN_X - 2 * SCORE_EDGE_PAD;
+}
+
+/**
+ * Largest font that still fits coin + digits in the grey stats area.
+ * Uses a conservative char ratio so we don't overflow before fonts load.
+ */
+export function scoreFontSizeForWidth(scoreText: string): number {
+  if (!scoreText) {
+    return SCORE_FONT_SIZE;
+  }
+  const available = statsAvailableWidth();
+  const coinFactor = (COIN_WIDTH + COIN_GAP) / SCORE_FONT_SIZE;
+  const textFactor = scoreText.length * COIN_LAYOUT_CHAR_RATIO;
+  const fontSize = Math.min(SCORE_FONT_SIZE, available / (coinFactor + textFactor));
+  return Math.max(SCORE_MIN_FONT_SIZE, Math.round(fontSize * 10) / 10);
+}
+
+interface ScoreClusterLayout {
+  fontSize: number;
+  scale: number;
+  coinW: number;
+  coinH: number;
+  gap: number;
+  scoreCenter: number;
+  baseline: number;
+  coinX: number;
+  coinY: number;
+  clusterWidth: number;
+}
+
+/** Center coin + score as one cluster in the available stats width. */
+function scoreClusterLayout(fontSize: number, scoreWidth: number): ScoreClusterLayout {
+  const scale = fontSize / SCORE_FONT_SIZE;
+  const coinW = COIN_WIDTH * scale;
+  const coinH = COIN_HEIGHT * scale;
+  const gap = COIN_GAP * scale;
+  const clusterWidth = coinW + gap + scoreWidth;
+  const available = statsAvailableWidth();
+  const clusterLeft = SCORE_EDGE_PAD + Math.max(0, (available - clusterWidth) / 2);
+  const coinX = clusterLeft;
+  const scoreCenter = clusterLeft + coinW + gap + scoreWidth / 2;
+  const baseline = scoreBaselineForFont(fontSize);
+  const coinY = coinYForScoreBaseline(baseline, fontSize, coinH);
+  return { fontSize, scale, coinW, coinH, gap, scoreCenter, baseline, coinX, coinY, clusterWidth };
+}
+
+function coinTransform(layout: ScoreClusterLayout): string {
+  return layout.scale === 1
+    ? `translate(${layout.coinX} ${layout.coinY})`
+    : `translate(${layout.coinX} ${layout.coinY}) scale(${roundScale(layout.scale)})`;
+}
+
+/**
+ * After fonts load: grow the score to fill unused grey-panel width, then
+ * re-center the coin + score cluster (horizontally and between the labels).
+ */
+export function syncCoinToScore(root: ParentNode): number | null {
+  const score = bugElement(root, 'score') as SVGGraphicsElement | null;
+  const coin = bugElement(root, 'coin') as SVGGraphicsElement | null;
+  const teamName = bugElement(root, 'teamName') as SVGGraphicsElement | null;
+  const teamTotal = bugElement(root, 'teamTotal') as SVGGraphicsElement | null;
+  if (!score || !coin) {
+    return null;
+  }
+
+  const svg = score.ownerSVGElement;
+  if (!svg?.createSVGPoint || !svg.getScreenCTM) {
+    return null;
+  }
+  const ctm = svg.getScreenCTM();
+  if (!ctm) {
+    return null;
+  }
+  const inv = ctm.inverse();
+  const toSvg = (screenX: number, screenY: number) => {
+    const p = svg.createSVGPoint();
+    p.x = screenX;
+    p.y = screenY;
+    return p.matrixTransform(inv);
+  };
+
+  let fontSize = Number(score.getAttribute('font-size') || SCORE_FONT_SIZE);
+  let scoreBox: DOMRect;
+  try {
+    scoreBox = score.getBoundingClientRect();
+  } catch {
+    return null;
+  }
+  if (!scoreBox.width) {
+    return null;
+  }
+
+  let scoreWidth = toSvg(scoreBox.right, 0).x - toSvg(scoreBox.left, 0).x;
+  const available = statsAvailableWidth();
+  const scale0 = fontSize / SCORE_FONT_SIZE;
+  const cluster0 = COIN_WIDTH * scale0 + COIN_GAP * scale0 + scoreWidth;
+
+  // Grow toward the full stats width when the conservative estimate over-shrunk.
+  if (cluster0 > 0 && cluster0 < available - 0.5) {
+    const grown = Math.min(SCORE_FONT_SIZE, Math.round(fontSize * (available / cluster0) * 10) / 10);
+    if (grown > fontSize + 0.05) {
+      scoreWidth *= grown / fontSize;
+      fontSize = grown;
+      score.setAttribute('font-size', String(fontSize));
+    }
+  }
+
+  const layout = scoreClusterLayout(fontSize, scoreWidth);
+  const tspan = score.querySelector('tspan');
+  if (tspan) {
+    tspan.setAttribute('x', String(layout.scoreCenter));
+    tspan.setAttribute('y', String(layout.baseline));
+  }
+  coin.setAttribute('transform', coinTransform(layout));
+
+  // Fine-tune vertical position from real label boxes after fonts/layout.
+  if (teamName && teamTotal && tspan) {
+    try {
+      const nameBox = teamName.getBoundingClientRect();
+      const totalBox = teamTotal.getBoundingClientRect();
+      scoreBox = score.getBoundingClientRect();
+      if (nameBox.height && totalBox.height && scoreBox.height) {
+        const gapMidScreen = (nameBox.bottom + totalBox.top) / 2;
+        const scoreMidScreen = (scoreBox.top + scoreBox.bottom) / 2;
+        const deltaSvg = toSvg(0, gapMidScreen).y - toSvg(0, scoreMidScreen).y;
+        if (Math.abs(deltaSvg) > 0.25) {
+          const nextBaseline = layout.baseline + deltaSvg;
+          tspan.setAttribute('y', String(nextBaseline));
+          const coinY = coinYForScoreBaseline(nextBaseline, fontSize, layout.coinH);
+          coin.setAttribute(
+            'transform',
+            layout.scale === 1
+              ? `translate(${layout.coinX} ${coinY})`
+              : `translate(${layout.coinX} ${coinY}) scale(${roundScale(layout.scale)})`,
+          );
+        }
+      }
+    } catch {
+      /* getBoundingClientRect may fail in non-rendered contexts */
+    }
+  }
+
+  return layout.coinX;
+}
+
+function roundScale(scale: number): number {
+  return Math.round(scale * 1000) / 1000;
 }
 
 /** Vertically center the coin icon on the score digits. */

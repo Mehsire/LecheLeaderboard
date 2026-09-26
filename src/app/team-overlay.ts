@@ -18,6 +18,7 @@ import {
   formatBugScore,
   patchBugSvg,
   rankNumberFromSheet,
+  syncCoinToScore,
   syncRankLabelToNumber,
   updateBugValuesInDom,
 } from './bug-svg';
@@ -140,5 +141,6 @@ export class TeamOverlay {
     });
 
     syncRankLabelToNumber(container);
+    syncCoinToScore(container);
   }
 }
